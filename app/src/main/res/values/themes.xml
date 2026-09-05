@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.TravenorTheme" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#0D6EFD</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/travenor</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+    </style>
+
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

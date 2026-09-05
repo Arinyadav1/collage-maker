@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">Travenor Customer</string>
+    <string name="on_board_title_life_is_short">Life is short and the</string>
+    <string name="on_board_title_world">World is</string>
+    <string name="on_board_title_wide">wide</string>
+    <string name="on_board_description">At Friends tours and travel, we customize reliable and trutworthy educational tours to destinations all over the world</string>
+
+    <string name="sign_in_sign_in_now">Sign in now</string>
+    <string name="sign_in_please_sign_in">Please sign in to continue our app</string>
+    <string name="button_sign_in">Sign In</string>
+    <string name="button_signing">Signing…</string>
+    <string name="button_verify">Verify</string>
+    <string name="button_verifying">Verifying…</string>
+    <string name="button_get_started">Get Started</string>
+    <string name="label_email">Email</string>
+    <string name="otp_verification">OTP Verification</string>
+    <string name="otp_verification_description_before_email">Please check your email</string>
+    <string name="otp_verification_description_after_email">to see the verification code</string>
+    <string name="resend">Resend code to</string>
+    <string name="resending">Resending…</string>
+    <string name="explore_the">Explore the</string>
+    <string name="beautiful">Beautiful</string>
+    <string name="world">world!</string>
+    <string name="best_destination">Best Destination</string>
+    <string name="detail">Detail</string>
+    <string name="book_now">Book Now</string>
+    <string name="requesting">Requesting…</string>
+    <string name="accept">Accept</string>
+    <string name="reject">Reject</string>
+    <string name="read_less">Read Less</string>
+    <string name="read_more">Read More</string>
+    <string name="person">Person</string>
+    <string name="about_destination">About Destination</string>
+</resources>

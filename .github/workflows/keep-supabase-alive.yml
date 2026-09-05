@@ -1,0 +1,15 @@
+name: keep-supabse-alive
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs at 00:00 UTC every Monday and Thursday
+    - cron: '0 0 * * 1,4'
+jobs:
+  alive_supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          curl -X GET "https://pwbxzqxqkksrnlibjrnt.supabase.co/rest/v1/all_destinations?limit=1" \
+          -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3Ynh6cXhxa2tzcm5saWJqcm50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjk5ODAsImV4cCI6MjA4MTYwNTk4MH0.voTqYf9QXX7j9PCujNCzevafpxC63-bxya_oPGGV3ho"
