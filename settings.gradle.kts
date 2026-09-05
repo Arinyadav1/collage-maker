@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Travenor Customer"
+rootProject.name = "Collage Maker"
 include(":app")
  

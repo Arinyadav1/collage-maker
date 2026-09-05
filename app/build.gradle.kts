@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.travenorcustomer"
+    namespace = "com.collageMaker"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.travenorcustomer"
+        applicationId = "com.collageMaker"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
@@ -79,10 +79,5 @@ dependencies {
     implementation(libs.coil.compose)
 
     implementation(libs.ktor.client.okhttp)
-
-
-
-
-
 
 }
