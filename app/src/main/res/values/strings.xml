@@ -1,4 +1,45 @@
 <resources>
     <string name="app_name">Collage Maker</string>
+    <string name="app_subtitle">On-Device Video Face Detection &amp; Collage</string>
+    
+    <string name="section_select_video">Select Video From Gallery</string>
+    <string name="button_pick_gallery">Select Video From Gallery</string>
+    <string name="button_change_gallery">Change Video</string>
+    <string name="button_process_video">Process Video &amp; Generate Post</string>
+    <string name="button_processing">Processing Video...</string>
+    <string name="button_save_gallery">Save To Gallery</string>
+    <string name="button_share_collage">Share Collage</string>
+    <string name="button_reset">Process Another Video</string>
+    
+    <string name="label_no_video_selected">No video selected yet. Tap below to pick a portrait video from your gallery.</string>
+    <string name="label_selected_video_ready">Selected Video Ready</string>
+    
+    <string name="title_processing_status">Video Analysis Progress</string>
+    <string name="title_recap_summary">Detected People &amp; Appearances</string>
+    <string name="title_generated_collage">Social Media Post Collage</string>
+    <string name="label_select_style">Social Media Post Format</string>
 
+    <string name="style_social_post">Instagram Post (4:5)</string>
+    <string name="style_story_reel">Story / Reel (9:16)</string>
+    <string name="style_editorial">Editorial Grid (1:1)</string>
+
+    <string name="label_person">Person %1$d</string>
+    <string name="label_appearances">%1$d Appearances</string>
+    <string name="label_single_appearance">1 Appearance</string>
+    <string name="label_quality_score">Representative Score: %1$.2f</string>
+    <string name="label_frontality">Frontality: %1$d%%</string>
+    <string name="label_eyes_open">Eyes Open: %1$d%%</string>
+    <string name="label_smiling">Smile Prob: %1$d%%</string>
+    
+    <string name="status_idle">Ready to process video</string>
+    <string name="status_extracting">Extracting frames from video...</string>
+    <string name="status_detecting">ML Kit Face Detection in progress...</string>
+    <string name="status_clustering">Clustering appearance segments...</string>
+    <string name="status_selecting">Selecting best representative shots...</string>
+    <string name="status_rendering">Rendering social media collage...</string>
+    <string name="status_complete">Processing completed!</string>
+    <string name="status_saved">Saved to device gallery!</string>
+    
+    <string name="error_no_faces">No faces detected in selected video clip.</string>
+    <string name="error_unknown">An error occurred during video processing.</string>
 </resources>

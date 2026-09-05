@@ -2,32 +2,30 @@ package com.collageMaker.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val DarkBackground = Color(0xFF0F172A)
+val DarkSurface = Color(0xFF1E293B)
+val DarkCardBg = Color(0xFF1E1B4B)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val PrimaryBlue = Color(0xFF2563EB)
+val AccentSky = Color(0xFF38BDF8)
+val AccentPurple = Color(0xFF8B5CF6)
+val TextPrimary = Color(0xFFF8FAFC)
+val TextSecondary = Color(0xFF94A3B8)
+val SuccessGreen = Color(0xFF10B981)
+val CardBorder = Color(0xFF334155)
 
-
-object AppColors{
-
-    // Other colours rather than Material Colours
-
-    val primaryBlue = Color(0xFF0D6EFD)
-
-    val customBlack = Color(0xFF1B1E28)
+object AppColors {
+    val primaryBlue = PrimaryBlue
+    val customBlack = Color(0xFF0F172A)
     val customWhite = Color(0xFFFFFFFF)
-
-    val lightSub = Color(0xFF7D848D)
-    val lightGrey = Color(0xFFF7F7F9)
-    val error = Color(0xFFba1a1a)
+    val lightSub = TextSecondary
+    val lightGrey = Color(0xFF1E293B)
+    val error = Color(0xFFEF4444)
     val grey = Color.Gray
-
-    val orange = Color(0xFFFF7029)
-
+    val orange = Color(0xFFF59E0B)
     val lightYellow = Color(0xFFFFD336)
-
-    val lightFrame = Color(0xFFE5F4FF)
+    val lightFrame = Color(0xFF1E1B4B)
+    val cardBackground = DarkSurface
+    val border = CardBorder
+    val accent = AccentSky
 }
