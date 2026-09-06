@@ -17,7 +17,7 @@ class VideoFrameExtractor(private val context: Context) {
 
     suspend fun extractFramesFromUri(
         uri: Uri,
-        sampleIntervalMs: Long = 250L,
+        sampleIntervalMs: Long = 100L,
         onProgress: (Float) -> Unit = {}
     ): List<ExtractedFrame> = withContext(Dispatchers.IO) {
         val retriever = MediaMetadataRetriever()

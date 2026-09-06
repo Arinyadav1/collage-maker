@@ -3,6 +3,7 @@ package com.collageMaker.data.ml
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
+import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
@@ -18,7 +19,7 @@ class FaceDetectorEngine {
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
         .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
         .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-        .setMinFaceSize(0.15f)
+        .setMinFaceSize(0.08f)
         .build()
 
     private val faceDetector = FaceDetection.getClient(detectorOptions)
@@ -42,7 +43,7 @@ class FaceDetectorEngine {
             emptyList()
         }
 
-        return faces.mapNotNull { face ->
+        val result = faces.mapNotNull { face ->
             val bounds = face.boundingBox
             val clampedBounds = Rect(
                 max(0, bounds.left),
@@ -57,8 +58,10 @@ class FaceDetectorEngine {
 
             val sharpness = calculateSharpness(bitmap, clampedBounds)
 
-            // Filter out blurry out-of-focus background blobs and non-human artifacts
-            if (sharpness < 0.20f) {
+            // Filter out blurry out-of-focus background blobs and non-human artifacts.
+            // Threshold lowered to 0.10 so that valid side-facing / background faces
+            // are not silently dropped before tracking begins.
+            if (sharpness < 0.10f) {
                 null
             } else {
                 RawFaceDetection(
@@ -72,6 +75,10 @@ class FaceDetectorEngine {
                 )
             }
         }
+        if (faces.isNotEmpty()) {
+            Log.d(TAG, "Frame ${bitmap.width}×${bitmap.height}: MLKit=${faces.size} faces, kept=${result.size} after quality filter")
+        }
+        return result
     }
 
     private fun calculateSharpness(bitmap: Bitmap, rect: Rect): Float {
@@ -134,5 +141,9 @@ class FaceDetectorEngine {
         } catch (e: Exception) {
             // Ignore close error
         }
+    }
+
+    companion object {
+        private const val TAG = "FaceDetector"
     }
 }
