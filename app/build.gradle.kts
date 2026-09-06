@@ -38,7 +38,7 @@ android {
 }
 
 dependencies {
-    implementation(libs.play.services.mlkit.face.detection)
+    implementation(libs.mlkit.face.detection)
     implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.lite.support)
     implementation(libs.play.services.tasks)

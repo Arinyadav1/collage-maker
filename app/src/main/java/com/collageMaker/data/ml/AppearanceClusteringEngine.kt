@@ -40,7 +40,7 @@ class AppearanceClusteringEngine {
 
     fun clusterVideoFaceFrames(
         faceFrames: List<DetectedFaceFrame>,
-        similarityThreshold: Float = 0.62f
+        similarityThreshold: Float = 0.50f
     ): List<Pair<Int, List<AppearanceSegment>>> {
         if (faceFrames.isEmpty()) return emptyList()
 
@@ -86,7 +86,7 @@ class AppearanceClusteringEngine {
 
                     val matchScore = if (iou > 0.25f) max(sim, iou) else sim
 
-                    if (matchScore > 0.55f && matchScore > bestSimilarity) {
+                    if (matchScore > 0.40f && matchScore > bestSimilarity) {
                         bestSimilarity = matchScore
                         bestTrackerIdx = idx
                     }
@@ -122,14 +122,14 @@ class AppearanceClusteringEngine {
             )
         }
 
-        val validSegments = finalizedSegments.filter { seg ->
+        val segmentsToCluster = finalizedSegments.filter { seg ->
             val avgSharpness = seg.faceFrames.map { it.sharpnessScore }.average()
-            seg.faceFrames.size >= 1 && avgSharpness >= 0.08
-        }
+            seg.faceFrames.isNotEmpty() && avgSharpness >= 0.01
+        }.ifEmpty { finalizedSegments }
 
-        if (validSegments.isEmpty()) return emptyList()
+        if (segmentsToCluster.isEmpty()) return emptyList()
 
-        val personClusters = groupSegmentsIntoPersons(validSegments, similarityThreshold)
+        val personClusters = groupSegmentsIntoPersons(segmentsToCluster, similarityThreshold)
         return personClusters
     }
 

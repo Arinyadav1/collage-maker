@@ -2,6 +2,7 @@ package com.collageMaker.features.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -42,8 +44,6 @@ import com.collageMaker.ui.theme.AppColors
 @Composable
 fun CollagePreviewSection(
     result: ProcessingResult,
-    selectedStyle: CollageStyle,
-    onStyleChanged: (CollageStyle) -> Unit,
     saveStatus: SaveStatus,
     onSaveClicked: () -> Unit,
     onShareClicked: () -> Unit,
@@ -58,47 +58,11 @@ fun CollagePreviewSection(
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        Text(
-            text = stringResource(R.string.label_select_style),
-            style = MaterialTheme.typography.bodyMedium,
-            color = AppColors.lightSub,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            CollageStyle.values().forEach { style ->
-                val isSelected = selectedStyle == style
-                val label = when (style) {
-                    CollageStyle.SOCIAL_POST -> stringResource(R.string.style_social_post)
-                    CollageStyle.STORY_REEL -> stringResource(R.string.style_story_reel)
-                    CollageStyle.EDITORIAL_CARD -> stringResource(R.string.style_editorial)
-                }
-
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onStyleChanged(style) },
-                    label = { Text(text = label) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = AppColors.primaryBlue,
-                        selectedLabelColor = AppColors.customWhite,
-                        containerColor = AppColors.cardBackground,
-                        labelColor = AppColors.lightSub
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-        }
-
         if (result.generatedCollageBitmap != null) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(9f / 16f)
+                    .aspectRatio(1f)
                     .clip(RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = AppColors.customBlack),

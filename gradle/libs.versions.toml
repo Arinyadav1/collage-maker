@@ -20,7 +20,7 @@ activityCompose = "1.12.1"
 composeBom = "2024.09.00"
 navigationCompose = "2.9.6"
 supabaseKt = "3.2.6"
-playServicesMlkitFaceDetection = "17.1.0"
+mlkitFaceDetection = "16.1.7"
 tensorflowLite = "2.16.1"
 tensorflowLiteSupport = "0.4.4"
 playServicesTasks = "18.2.0"
@@ -32,7 +32,7 @@ graphicsPath = "1.0.1"
 tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
 tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
 androidx-graphics-path = { module = "androidx.graphics:graphics-path", version.ref = "graphicsPath" }
-play-services-mlkit-face-detection = { module = "com.google.android.gms:play-services-mlkit-face-detection", version.ref = "playServicesMlkitFaceDetection" }
+mlkit-face-detection = { module = "com.google.mlkit:face-detection", version.ref = "mlkitFaceDetection" }
 play-services-tasks = { module = "com.google.android.gms:play-services-tasks", version.ref = "playServicesTasks" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }

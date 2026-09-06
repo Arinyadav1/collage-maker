@@ -116,8 +116,6 @@ fun HomeScreen(
 
                 CollagePreviewSection(
                     result = result,
-                    selectedStyle = state.selectedStyle,
-                    onStyleChanged = { style -> viewModel.onAction(HomeAction.ChangeCollageStyle(style)) },
                     saveStatus = state.saveStatus,
                     onSaveClicked = { viewModel.onAction(HomeAction.SaveCollageToGallery) },
                     onShareClicked = { viewModel.onAction(HomeAction.ShareCollage) },

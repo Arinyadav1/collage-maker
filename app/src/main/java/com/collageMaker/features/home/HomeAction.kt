@@ -2,7 +2,6 @@ package com.collageMaker.features.home
 
 import android.net.Uri
 import com.collageMaker.data.model.CollageStyle
-import com.collageMaker.data.model.VideoItem
 
 sealed interface HomeAction {
     data class PickCustomVideo(val uri: Uri, val title: String) : HomeAction

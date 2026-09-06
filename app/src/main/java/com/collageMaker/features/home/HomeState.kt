@@ -7,7 +7,6 @@ import com.collageMaker.data.model.SaveStatus
 import com.collageMaker.data.model.VideoItem
 
 data class HomeState(
-    val sampleVideos: List<VideoItem> = emptyList(),
     val selectedVideo: VideoItem? = null,
     val selectedStyle: CollageStyle = CollageStyle.SOCIAL_POST,
     val processingStatus: ProcessingStatus = ProcessingStatus.Idle,

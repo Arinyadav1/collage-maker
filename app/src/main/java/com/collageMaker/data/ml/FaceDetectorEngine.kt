@@ -18,7 +18,7 @@ class FaceDetectorEngine {
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
         .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
         .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-        .setMinFaceSize(0.12f)
+        .setMinFaceSize(0.10f)
         .build()
 
     private val faceDetector = FaceDetection.getClient(detectorOptions)
@@ -100,7 +100,7 @@ class FaceDetectorEngine {
 
         if (count == 0) return 0.5f
         val avgGradient = (totalGradient / count).toFloat()
-        return min(1.0f, avgGradient / 50.0f)
+        return min(1.0f, max(0.1f, avgGradient / 25.0f))
     }
 
     private fun getLuminance(color: Int): Float {
