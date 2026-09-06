@@ -62,7 +62,10 @@ fun CollagePreviewSection(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)
+                    .aspectRatio(
+                        result.generatedCollageBitmap.width.toFloat() /
+                            result.generatedCollageBitmap.height.toFloat()
+                    )
                     .clip(RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = AppColors.customBlack),

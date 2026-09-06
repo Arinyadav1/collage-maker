@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Typeface
 import androidx.core.graphics.createBitmap
 import com.collageMaker.data.model.CollageStyle
 import com.collageMaker.data.model.PersonClusterResult
@@ -21,40 +22,26 @@ class CollageGeneratorEngine(private val context: Context) {
         personClusters: List<PersonClusterResult>,
         style: CollageStyle = CollageStyle.SOCIAL_POST
     ): Pair<Bitmap, File> {
-        val width = 1080
-        val height = 1080 // Square dynamic photo collage canvas
+        val (width, height) = when (style) {
+            CollageStyle.STORY_REEL -> 1080 to 1920
+            CollageStyle.SOCIAL_POST -> 1080 to 1350
+            CollageStyle.EDITORIAL_CARD -> 1080 to 1080
+        }
 
         val collageBitmap = createBitmap(width, height)
         val canvas = Canvas(collageBitmap)
 
-        // Clean white background between dynamic tiles
-        canvas.drawColor(Color.WHITE)
+        canvas.drawColor(Color.rgb(15, 18, 30))
 
-        val faceTiles = mutableListOf<Bitmap>()
-
-        if (personClusters.size >= 3) {
-            for (p in personClusters) {
-                faceTiles.add(p.croppedFaceTile ?: p.bestRepresentativeFrame.frameBitmap)
-            }
-        } else {
-            val shotSelector = RepresentativeShotSelector()
-            for (p in personClusters) {
-                for (appearance in p.appearances) {
-                    val bestInSeg = appearance.faceFrames.maxByOrNull { it.qualityScore } ?: appearance.faceFrames.firstOrNull()
-                    if (bestInSeg != null) {
-                        val tile = shotSelector.createGenerousFaceTile(bestInSeg.frameBitmap, bestInSeg.faceBoundingBox)
-                        faceTiles.add(tile)
-                    }
-                }
-            }
-            if (faceTiles.isEmpty()) {
-                for (p in personClusters) {
-                    faceTiles.add(p.croppedFaceTile ?: p.bestRepresentativeFrame.frameBitmap)
-                }
-            }
-        }
-
-        val tiles = calculateDynamicMosaicRects(width.toFloat(), height.toFloat(), faceTiles.size)
+        // A collage is an identity recap: each clustered person contributes exactly one tile.
+        val faceTiles = personClusters.map { it.croppedFaceTile }
+        val headerHeight = if (style == CollageStyle.EDITORIAL_CARD) 118f else 150f
+        val tiles = calculateDynamicMosaicRects(
+            width.toFloat(),
+            height.toFloat() - headerHeight,
+            faceTiles.size,
+            topInset = headerHeight
+        )
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
@@ -62,7 +49,9 @@ class CollageGeneratorEngine(private val context: Context) {
             if (index >= faceTiles.size) break
             val bitmap = faceTiles[index]
             drawCenterCropTile(canvas, bitmap, rect, paint)
+            drawPersonBadge(canvas, rect, personClusters[index], paint)
         }
+        drawHeader(canvas, videoTitle, personClusters.size, headerHeight, paint)
 
         val outputFile = saveBitmapToCache(collageBitmap)
         return Pair(collageBitmap, outputFile)
@@ -71,7 +60,8 @@ class CollageGeneratorEngine(private val context: Context) {
     private fun calculateDynamicMosaicRects(
         totalW: Float,
         totalH: Float,
-        count: Int
+        count: Int,
+        topInset: Float = 0f
     ): List<RectF> {
         if (count <= 0) return emptyList()
 
@@ -82,7 +72,7 @@ class CollageGeneratorEngine(private val context: Context) {
         val availableW = totalW - (padding * 2)
         val availableH = totalH - (padding * 2)
         val startX = padding
-        val startY = padding
+        val startY = padding + topInset
 
         when (count) {
             1 -> {
@@ -189,6 +179,46 @@ class CollageGeneratorEngine(private val context: Context) {
         }
 
         canvas.drawBitmap(bitmap, srcCropRect, destRect, paint)
+    }
+
+    private fun drawHeader(
+        canvas: Canvas,
+        videoTitle: String,
+        peopleCount: Int,
+        headerHeight: Float,
+        paint: Paint
+    ) {
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textSize = 43f
+        paint.color = Color.WHITE
+        canvas.drawText("PEOPLE RECAP", 34f, 57f, paint)
+        paint.typeface = Typeface.DEFAULT
+        paint.textSize = 25f
+        paint.color = Color.rgb(190, 199, 225)
+        val subtitle = "$peopleCount ${if (peopleCount == 1) "person" else "people"} • $videoTitle"
+        canvas.drawText(subtitle.take(58), 34f, 98f, paint)
+        paint.color = Color.rgb(115, 91, 255)
+        canvas.drawRect(34f, headerHeight - 18f, 174f, headerHeight - 10f, paint)
+    }
+
+    private fun drawPersonBadge(
+        canvas: Canvas,
+        rect: RectF,
+        person: PersonClusterResult,
+        paint: Paint
+    ) {
+        val badge = RectF(rect.left + 14f, rect.bottom - 65f, rect.left + 215f, rect.bottom - 14f)
+        paint.color = Color.argb(205, 10, 12, 22)
+        canvas.drawRoundRect(badge, 25f, 25f, paint)
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textSize = 22f
+        paint.color = Color.WHITE
+        canvas.drawText("PERSON ${person.personId}", badge.left + 16f, badge.top + 23f, paint)
+        paint.typeface = Typeface.DEFAULT
+        paint.textSize = 18f
+        paint.color = Color.rgb(214, 210, 255)
+        val appearances = "${person.appearanceCount} ${if (person.appearanceCount == 1) "appearance" else "appearances"}"
+        canvas.drawText(appearances, badge.left + 16f, badge.top + 43f, paint)
     }
 
     private fun saveBitmapToCache(bitmap: Bitmap): File {

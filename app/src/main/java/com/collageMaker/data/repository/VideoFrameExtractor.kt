@@ -31,8 +31,10 @@ class VideoFrameExtractor(private val context: Context) {
 
             while (currentMs < durationMs) {
                 val timeUs = currentMs * 1000L
-                val bitmap = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                    ?: retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                // OPTION_CLOSEST preserves the requested sampling cadence. Using only sync
+                // frames repeats keyframes and can artificially join separate appearances.
+                val bitmap = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                    ?: retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
 
                 if (bitmap != null) {
                     val scaled = scaleBitmapIfNeeded(bitmap, maxDimension = 720)
