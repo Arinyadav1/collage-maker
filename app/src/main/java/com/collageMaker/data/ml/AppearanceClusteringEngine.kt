@@ -101,9 +101,9 @@ class AppearanceClusteringEngine {
             val currentFaces = frameGroupsByTime[ts] ?: continue
 
             // ── Finalize stale trackers ────────────────────────────────────
-            // A continuous appearance may tolerate a few missed sampled frames, but not
-            // a long absence. Keeping dead trackers alive for 1.5 s previously made a
-            // person in the next shot look "concurrent" with the old person.
+            // Tolerate at most one missed sample (200 ms ≈ 2 × 100 ms sample interval).
+            // A gap longer than that means the face left the frame — the next sighting
+            // is a brand-new appearance, not a continuation of the old one.
             val staleTrackers = activeTrackers.filter { ts - it.lastSeenTimeMs > MAX_TRACK_GAP_MS }
             for (stale in staleTrackers) {
                 finalizedSegments.add(stale.toSegment())
@@ -121,17 +121,37 @@ class AppearanceClusteringEngine {
                 for ((idx, tracker) in activeTrackers.withIndex()) {
                     if (idx in matchedTrackerIndices) continue
 
-                    val refFrame   = tracker.bestRecentFrame()
-                    val iou        = calculateIoU(face.faceBoundingBox, refFrame.faceBoundingBox)
-                    val sim        = FaceEmbeddingEngine.calculateCosineSimilarity(
+                    val refFrame = tracker.bestRecentFrame()
+                    val iou      = calculateIoU(face.faceBoundingBox, refFrame.faceBoundingBox)
+                    val sim      = FaceEmbeddingEngine.calculateCosineSimilarity(
                         face.embedding, refFrame.embedding
                     )
                     val gapMs = ts - tracker.lastSeenTimeMs
-                    // Spatial overlap is only reliable across adjacent sampled frames.
-                    // Across a cut, a new person can occupy the same screen location, so
-                    // require a strong embedding match when there is no reliable overlap.
+
+                    // ── Spatial-displacement guard ──────────────────────────
+                    // Even with a strong embedding match, if the bounding-box centre
+                    // has teleported a large distance between frames the detection is
+                    // almost certainly a different shot (hard cut) rather than continuous
+                    // motion. Reject the match so a new segment starts.
+                    if (gapMs > SAMPLE_INTERVAL_MS) {
+                        val refCx = (refFrame.faceBoundingBox.left + refFrame.faceBoundingBox.right) / 2f
+                        val refCy = (refFrame.faceBoundingBox.top  + refFrame.faceBoundingBox.bottom) / 2f
+                        val faceCx = (face.faceBoundingBox.left + face.faceBoundingBox.right) / 2f
+                        val faceCy = (face.faceBoundingBox.top  + face.faceBoundingBox.bottom) / 2f
+                        val dx = refCx - faceCx
+                        val dy = refCy - faceCy
+                        val displacement = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+                        // Reject if displacement > 40 % of the larger bounding-box dimension,
+                        // which reliably identifies a scene cut rather than natural motion.
+                        val refSize = max(refFrame.faceBoundingBox.width(), refFrame.faceBoundingBox.height()).toFloat()
+                        if (displacement > refSize * SPATIAL_JUMP_FACTOR) continue
+                    }
+
+                    // Spatial overlap is reliable only across adjacent sampled frames.
+                    // Across a cut, require a strong embedding match; even then the
+                    // spatial-displacement guard above will veto obvious teleports.
                     val matchScore = when {
-                        gapMs <= 250L && iou > 0.25f -> max(sim, iou)
+                        gapMs <= SAMPLE_INTERVAL_MS && iou > 0.25f -> max(sim, iou)
                         sim >= 0.78f -> sim
                         else -> -1f
                     }
@@ -185,9 +205,11 @@ class AppearanceClusteringEngine {
         // ── Quality gate ──────────────────────────────────────────────────────
         // Require ≥ 2 frames (100 ms at 10 fps sample rate) to discard single-frame
         // noise detections and blurry whip-pan glimpses.
+        // Sharpness floor raised to 0.15 so that two marginal whip-pan frames
+        // (each just above the per-frame 0.10 threshold) cannot combine to pass.
         val segmentsToCluster = finalizedSegments.filter { seg ->
             val avgSharpness = seg.faceFrames.map { it.sharpnessScore }.average()
-            seg.faceFrames.size >= 2 && avgSharpness >= 0.10f
+            seg.faceFrames.size >= 2 && avgSharpness >= 0.15f
         }
 
         Log.d(TAG, "After quality filter: ${segmentsToCluster.size} segments remain.")
@@ -295,6 +317,13 @@ class AppearanceClusteringEngine {
 
     companion object {
         private const val TAG = "AppearanceClustering"
-        private const val MAX_TRACK_GAP_MS = 700L
+        /** Maximum gap (ms) between samples before a tracker is finalised as ended.
+         *  At 100 ms sample cadence this allows exactly one missed sample. */
+        private const val MAX_TRACK_GAP_MS    = 200L
+        /** Nominal gap between successive extracted frames (ms). */
+        private const val SAMPLE_INTERVAL_MS  = 100L
+        /** If a bounding-box centre shifts more than this multiple of the face size
+         *  between non-adjacent frames, the match is rejected as a scene cut. */
+        private const val SPATIAL_JUMP_FACTOR = 0.40f
     }
 }
