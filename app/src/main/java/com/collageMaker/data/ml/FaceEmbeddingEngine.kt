@@ -97,20 +97,29 @@ class FaceEmbeddingEngine(private val context: Context? = null) {
 
         val gridRows = 8
         val gridCols = 8
-        val cellW = width / gridCols
-        val cellH = height / gridRows
+        val cellW = max(1, width / gridCols)
+        val cellH = max(1, height / gridRows)
 
-        var featureIdx = 0
+        val lums = FloatArray(64)
+        val rRatios = FloatArray(16)
+        val gRatios = FloatArray(16)
+        val bRatios = FloatArray(16)
+
+        var gridIdx = 0
         for (r in 0 until gridRows) {
             for (c in 0 until gridCols) {
-                if (featureIdx >= embeddingDim - 16) break
                 var sumR = 0f
                 var sumG = 0f
                 var sumB = 0f
                 var count = 0
 
-                for (y in (r * cellH) until ((r + 1) * cellH)) {
-                    for (x in (c * cellW) until ((c + 1) * cellW)) {
+                val startY = r * cellH
+                val endY = min(height, (r + 1) * cellH)
+                val startX = c * cellW
+                val endX = min(width, (c + 1) * cellW)
+
+                for (y in startY until endY) {
+                    for (x in startX until endX) {
                         val px = pixels[y * width + x]
                         sumR += Color.red(px)
                         sumG += Color.green(px)
@@ -120,20 +129,45 @@ class FaceEmbeddingEngine(private val context: Context? = null) {
                 }
 
                 if (count > 0) {
-                    val lum = (0.299f * sumR + 0.587f * sumG + 0.114f * sumB) / (count * 255.0f)
-                    embedding[featureIdx++] = lum
+                    val avgR = sumR / count
+                    val avgG = sumG / count
+                    val avgB = sumB / count
+                    val totalRgb = max(1.0f, avgR + avgG + avgB)
+
+                    lums[gridIdx] = (0.299f * avgR + 0.587f * avgG + 0.114f * avgB)
+                    if (gridIdx < 16) {
+                        rRatios[gridIdx] = avgR / totalRgb
+                        gRatios[gridIdx] = avgG / totalRgb
+                        bRatios[gridIdx] = avgB / totalRgb
+                    }
                 }
+                gridIdx++
             }
         }
 
-        val topHalfLum = (0 until 32).sumOf { embedding[it].toDouble() }.toFloat() / 32.0f
-        val bottomHalfLum = (32 until 64).sumOf { embedding[it].toDouble() }.toFloat() / 32.0f
-        if (featureIdx < embeddingDim) embedding[featureIdx++] = topHalfLum
-        if (featureIdx < embeddingDim) embedding[featureIdx++] = bottomHalfLum
+        // Subtract mean luminance to zero-center feature values (essential for cosine similarity discriminant)
+        val meanLum = lums.average().toFloat()
+        var idx = 0
 
-        while (featureIdx < embeddingDim) {
-            embedding[featureIdx] = (embedding[featureIdx % 64] * 0.8f + embedding[(featureIdx + 1) % 64] * 0.2f)
-            featureIdx++
+        for (i in 0 until 64) {
+            embedding[idx++] = lums[i] - meanLum
+        }
+
+        val meanR = rRatios.average().toFloat()
+        val meanG = gRatios.average().toFloat()
+        val meanB = bRatios.average().toFloat()
+
+        for (i in 0 until 16) {
+            if (idx < embeddingDim) embedding[idx++] = (rRatios[i] - meanR) * 100f
+            if (idx < embeddingDim) embedding[idx++] = (gRatios[i] - meanG) * 100f
+            if (idx < embeddingDim) embedding[idx++] = (bRatios[i] - meanB) * 100f
+        }
+
+        while (idx < embeddingDim) {
+            val i1 = idx % 64
+            val i2 = (idx + 1) % 64
+            embedding[idx] = (lums[i1] - lums[i2])
+            idx++
         }
 
         return normalize(embedding)

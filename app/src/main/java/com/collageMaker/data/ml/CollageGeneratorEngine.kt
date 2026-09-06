@@ -30,15 +30,37 @@ class CollageGeneratorEngine(private val context: Context) {
         // Clean white background between dynamic tiles
         canvas.drawColor(Color.WHITE)
 
-        val tiles = calculateDynamicMosaicRects(width.toFloat(), height.toFloat(), personClusters.size)
+        val faceTiles = mutableListOf<Bitmap>()
+
+        if (personClusters.size >= 3) {
+            for (p in personClusters) {
+                faceTiles.add(p.croppedFaceTile ?: p.bestRepresentativeFrame.frameBitmap)
+            }
+        } else {
+            val shotSelector = RepresentativeShotSelector()
+            for (p in personClusters) {
+                for (appearance in p.appearances) {
+                    val bestInSeg = appearance.faceFrames.maxByOrNull { it.qualityScore } ?: appearance.faceFrames.firstOrNull()
+                    if (bestInSeg != null) {
+                        val tile = shotSelector.createGenerousFaceTile(bestInSeg.frameBitmap, bestInSeg.faceBoundingBox)
+                        faceTiles.add(tile)
+                    }
+                }
+            }
+            if (faceTiles.isEmpty()) {
+                for (p in personClusters) {
+                    faceTiles.add(p.croppedFaceTile ?: p.bestRepresentativeFrame.frameBitmap)
+                }
+            }
+        }
+
+        val tiles = calculateDynamicMosaicRects(width.toFloat(), height.toFloat(), faceTiles.size)
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
         for ((index, rect) in tiles.withIndex()) {
-            if (index >= personClusters.size) break
-            val person = personClusters[index]
-            val bitmap = person.croppedFaceTile ?: person.bestRepresentativeFrame.frameBitmap
-
+            if (index >= faceTiles.size) break
+            val bitmap = faceTiles[index]
             drawCenterCropTile(canvas, bitmap, rect, paint)
         }
 

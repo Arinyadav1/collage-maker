@@ -40,7 +40,7 @@ class AppearanceClusteringEngine {
 
     fun clusterVideoFaceFrames(
         faceFrames: List<DetectedFaceFrame>,
-        similarityThreshold: Float = 0.50f
+        similarityThreshold: Float = 0.60f
     ): List<Pair<Int, List<AppearanceSegment>>> {
         if (faceFrames.isEmpty()) return emptyList()
 
@@ -124,8 +124,8 @@ class AppearanceClusteringEngine {
 
         val segmentsToCluster = finalizedSegments.filter { seg ->
             val avgSharpness = seg.faceFrames.map { it.sharpnessScore }.average()
-            seg.faceFrames.isNotEmpty() && avgSharpness >= 0.01
-        }.ifEmpty { finalizedSegments }
+            seg.faceFrames.isNotEmpty() && avgSharpness >= 0.20f
+        }
 
         if (segmentsToCluster.isEmpty()) return emptyList()
 

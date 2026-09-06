@@ -18,7 +18,7 @@ class FaceDetectorEngine {
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
         .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
         .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-        .setMinFaceSize(0.10f)
+        .setMinFaceSize(0.15f)
         .build()
 
     private val faceDetector = FaceDetection.getClient(detectorOptions)
@@ -42,7 +42,7 @@ class FaceDetectorEngine {
             emptyList()
         }
 
-        return faces.map { face ->
+        return faces.mapNotNull { face ->
             val bounds = face.boundingBox
             val clampedBounds = Rect(
                 max(0, bounds.left),
@@ -51,56 +51,74 @@ class FaceDetectorEngine {
                 min(bitmap.height, bounds.bottom)
             )
 
+            if (clampedBounds.width() <= 20 || clampedBounds.height() <= 20) {
+                return@mapNotNull null
+            }
+
             val sharpness = calculateSharpness(bitmap, clampedBounds)
 
-            RawFaceDetection(
-                boundingBox = clampedBounds,
-                eulerY = face.headEulerAngleY,
-                eulerZ = face.headEulerAngleZ,
-                leftEyeOpenProb = face.leftEyeOpenProbability,
-                rightEyeOpenProb = face.rightEyeOpenProbability,
-                smilingProb = face.smilingProbability,
-                sharpnessScore = sharpness
-            )
+            // Filter out blurry out-of-focus background blobs and non-human artifacts
+            if (sharpness < 0.20f) {
+                null
+            } else {
+                RawFaceDetection(
+                    boundingBox = clampedBounds,
+                    eulerY = face.headEulerAngleY,
+                    eulerZ = face.headEulerAngleZ,
+                    leftEyeOpenProb = face.leftEyeOpenProbability,
+                    rightEyeOpenProb = face.rightEyeOpenProbability,
+                    smilingProb = face.smilingProbability,
+                    sharpnessScore = sharpness
+                )
+            }
         }
     }
 
     private fun calculateSharpness(bitmap: Bitmap, rect: Rect): Float {
-        if (rect.width() <= 5 || rect.height() <= 5) return 0.5f
+        val startX = max(0, rect.left)
+        val startY = max(0, rect.top)
+        val width = min(bitmap.width - startX, rect.width())
+        val height = min(bitmap.height - startY, rect.height())
 
-        val startX = rect.left
-        val startY = rect.top
-        val width = rect.width()
-        val height = rect.height()
+        if (width <= 16 || height <= 16) return 0.0f
 
         val pixels = IntArray(width * height)
         try {
             bitmap.getPixels(pixels, 0, width, startX, startY, width, height)
         } catch (e: Exception) {
-            return 0.5f
+            return 0.0f
         }
 
-        var totalGradient = 0.0
+        var sumLaplacian = 0.0
+        var sumLaplacianSq = 0.0
         var count = 0
 
-        val step = max(1, width / 40)
+        val step = max(1, min(width, height) / 50)
         for (y in 1 until height - 1 step step) {
             for (x in 1 until width - 1 step step) {
                 val idx = y * width + x
                 val center = getLuminance(pixels[idx])
+                val left = getLuminance(pixels[idx - 1])
                 val right = getLuminance(pixels[idx + 1])
+                val top = getLuminance(pixels[idx - width])
                 val bottom = getLuminance(pixels[idx + width])
 
-                val dx = abs(center - right)
-                val dy = abs(center - bottom)
-                totalGradient += (dx + dy)
+                val lap = (4 * center - left - right - top - bottom).toDouble()
+                sumLaplacian += lap
+                sumLaplacianSq += lap * lap
                 count++
             }
         }
 
-        if (count == 0) return 0.5f
-        val avgGradient = (totalGradient / count).toFloat()
-        return min(1.0f, max(0.1f, avgGradient / 25.0f))
+        if (count == 0) return 0.0f
+
+        val mean = sumLaplacian / count
+        val variance = (sumLaplacianSq / count) - (mean * mean)
+
+        // Blurry out-of-focus background blobs have variance < 150.0
+        // Clear in-focus human faces have variance > 400.0 (up to 3000.0)
+        val score = (variance / 800.0).toFloat()
+        return min(1.0f, max(0.0f, score))
     }
 
     private fun getLuminance(color: Int): Float {
