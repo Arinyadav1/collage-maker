@@ -3,10 +3,6 @@ package com.collageMaker.data.repository
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -23,9 +19,6 @@ import com.collageMaker.data.model.ProcessingResult
 import com.collageMaker.data.model.VideoItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import androidx.core.graphics.toColorInt
 
 class VideoRepository(private val context: Context) {
 
@@ -43,18 +36,19 @@ class VideoRepository(private val context: Context) {
     ): ProcessingResult = withContext(Dispatchers.Default) {
         val detectedFaceFrames = mutableListOf<DetectedFaceFrame>()
 
-        if (videoItem.uri != null) {
-            onProgress("Extracting Video Frames...", 0.05f)
-            val frames = frameExtractor.extractFramesFromUri(videoItem.uri) { p ->
-                onProgress("Extracting Video Frames...", 0.05f + (p * 0.25f))
-            }
+        val videoUri = requireNotNull(videoItem.uri) { "Select a video before processing." }
+        onProgress("Extracting Video Frames...", 0.05f)
+        val frames = frameExtractor.extractFramesFromUri(videoUri) { p ->
+            onProgress("Extracting Video Frames...", 0.05f + (p * 0.25f))
+        }
+        if (frames.isEmpty()) error("Couldn't read frames from this video.")
 
-            onProgress("Detecting Faces (ML Kit)...", 0.30f)
-            for ((idx, frame) in frames.withIndex()) {
+        onProgress("Detecting Faces (ML Kit)...", 0.30f)
+        for ((idx, frame) in frames.withIndex()) {
                 val rawFaces = faceDetectorEngine.detectFaces(frame.bitmap)
                 for (rawFace in rawFaces) {
                     val embedding = faceEmbeddingEngine.extractEmbedding(frame.bitmap, rawFace.boundingBox)
-                    val frameObj = DetectedFaceFrame(
+                    val unscoredFrame = DetectedFaceFrame(
                         frameTimestampMs = frame.timestampMs,
                         frameBitmap = frame.bitmap,
                         faceBoundingBox = rawFace.boundingBox,
@@ -67,62 +61,63 @@ class VideoRepository(private val context: Context) {
                         sharpnessScore = rawFace.sharpnessScore,
                         qualityScore = 0f
                     )
-                    detectedFaceFrames.add(frameObj)
+                    detectedFaceFrames.add(
+                        unscoredFrame.copy(
+                            qualityScore = shotSelector.calculateShotQualityScore(unscoredFrame)
+                        )
+                    )
                 }
-                val p = (idx + 1).toFloat() / frames.size
+                val p = (idx + 1).toFloat() / frames.size.toFloat()
                 onProgress("Detecting Faces (ML Kit)...", 0.30f + (p * 0.25f))
-            }
         }
+        if (detectedFaceFrames.isEmpty()) error("No clear faces were detected in this video.")
 
         onProgress("Clustering Appearances Across Segments...", 0.60f)
         val personClusterPairs = clusteringEngine.clusterVideoFaceFrames(detectedFaceFrames)
+        if (personClusterPairs.isEmpty()) error("No clear face appearances were found in this video.")
 
         onProgress("Selecting Strong Representative Shots...", 0.80f)
         val personClusterResults = mutableListOf<PersonClusterResult>()
 
         for ((personId, appearances) in personClusterPairs) {
-            val bestFrame = shotSelector.selectBestShot(appearances)
-            val generousFaceTile = shotSelector.createGenerousFaceTile(
-                frameBitmap = bestFrame.frameBitmap,
-                faceBoundingBox = bestFrame.faceBoundingBox
-            )
-
-            personClusterResults.add(
-                PersonClusterResult(
-                    personId = personId,
-                    appearanceCount = appearances.size,
-                    appearances = appearances,
-                    bestRepresentativeFrame = bestFrame,
-                    croppedFaceTile = generousFaceTile
+                val bestFrame = shotSelector.selectBestShot(appearances)
+                val generousFaceTile = shotSelector.createGenerousFaceTile(
+                    frameBitmap = bestFrame.frameBitmap,
+                    faceBoundingBox = bestFrame.faceBoundingBox
                 )
-            )
+
+                personClusterResults.add(
+                    PersonClusterResult(
+                        personId = personId,
+                        appearanceCount = appearances.size,
+                        appearances = appearances,
+                        bestRepresentativeFrame = bestFrame,
+                        croppedFaceTile = generousFaceTile
+                    )
+                )
         }
 
         onProgress("Generating Story Collage...", 0.90f)
         val (collageBitmap, collageFile) = collageGenerator.generateCollage(
-            videoTitle = videoItem.title,
-            personClusters = personClusterResults,
-            style = collageStyle
+                videoTitle = videoItem.title,
+                personClusters = personClusterResults,
+                style = collageStyle
         )
 
-        val collageUri = try {
-            FileProvider.getUriForFile(
+        val collageUri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
                 collageFile
-            )
-        } catch (e: Exception) {
-            null
-        }
+        )
 
         onProgress("Complete!", 1.0f)
 
         ProcessingResult(
-            videoTitle = videoItem.title,
-            personClusters = personClusterResults,
-            totalAppearances = personClusterResults.sumOf { it.appearanceCount },
-            generatedCollageUri = collageUri,
-            generatedCollageBitmap = collageBitmap
+                videoTitle = videoItem.title,
+                personClusters = personClusterResults,
+                totalAppearances = personClusterResults.sumOf { it.appearanceCount },
+                generatedCollageUri = collageUri,
+                generatedCollageBitmap = collageBitmap
         )
     }
 
