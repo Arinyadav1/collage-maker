@@ -67,12 +67,12 @@ class AppearanceClusteringEngine {
         faceFrames: List<DetectedFaceFrame>,
         /**
          * Minimum cosine similarity between two segment embeddings for them to be
-         * considered the same person. Raised to 0.68 because the enhanced spatial
-         * fallback embedding is still not as strong as a real face-recognition model.
-         * A too-low threshold (0.48) was the primary reason all people collapsed into
-         * a single cluster.
+         * considered the same person. The value is deliberately lower than the
+         * intra-frame tracking threshold: segment embeddings average several clean
+         * frames, while the simultaneous-visibility constraint prevents two people
+         * from being merged simply because their appearance is similar.
          */
-        similarityThreshold: Float = 0.68f
+        similarityThreshold: Float = 0.60f
     ): List<Pair<Int, List<AppearanceSegment>>> {
 
         if (faceFrames.isEmpty()) {
@@ -100,22 +100,11 @@ class AppearanceClusteringEngine {
         for (ts in sortedTimestamps) {
             val currentFaces = frameGroupsByTime[ts] ?: continue
 
-            // ── Record concurrent pairs BEFORE stale-removal ───────────────
-            // Any two trackers alive right now represent different physical people.
-            if (activeTrackers.size >= 2) {
-                for (i in 0 until activeTrackers.size) {
-                    for (j in i + 1 until activeTrackers.size) {
-                        val a = activeTrackers[i].id
-                        val b = activeTrackers[j].id
-                        concurrentSegmentPairs.add(Pair(minOf(a, b), maxOf(a, b)))
-                    }
-                }
-            }
-
             // ── Finalize stale trackers ────────────────────────────────────
-            // 1 500 ms: survives quick cuts (typical cut gap 300–800 ms) without
-            // incorrectly splitting the same person mid-appearance.
-            val staleTrackers = activeTrackers.filter { ts - it.lastSeenTimeMs > 1500 }
+            // A continuous appearance may tolerate a few missed sampled frames, but not
+            // a long absence. Keeping dead trackers alive for 1.5 s previously made a
+            // person in the next shot look "concurrent" with the old person.
+            val staleTrackers = activeTrackers.filter { ts - it.lastSeenTimeMs > MAX_TRACK_GAP_MS }
             for (stale in staleTrackers) {
                 finalizedSegments.add(stale.toSegment())
                 Log.d(TAG, "  Finalized stale segment ${stale.id} [${stale.startTimeMs}–${stale.lastSeenTimeMs}ms, ${stale.frames.size} frames]")
@@ -137,11 +126,17 @@ class AppearanceClusteringEngine {
                     val sim        = FaceEmbeddingEngine.calculateCosineSimilarity(
                         face.embedding, refFrame.embedding
                     )
-                    // IoU is extremely reliable for same-person across consecutive frames.
-                    // Prefer IoU when there is clear positional overlap; use embedding alone otherwise.
-                    val matchScore = if (iou > 0.25f) max(sim, iou) else sim
+                    val gapMs = ts - tracker.lastSeenTimeMs
+                    // Spatial overlap is only reliable across adjacent sampled frames.
+                    // Across a cut, a new person can occupy the same screen location, so
+                    // require a strong embedding match when there is no reliable overlap.
+                    val matchScore = when {
+                        gapMs <= 250L && iou > 0.25f -> max(sim, iou)
+                        sim >= 0.78f -> sim
+                        else -> -1f
+                    }
 
-                    if (matchScore > 0.30f && matchScore > bestScore) {
+                    if (matchScore > 0.0f && matchScore > bestScore) {
                         bestScore      = matchScore
                         bestTrackerIdx = idx
                     }
@@ -163,6 +158,18 @@ class AppearanceClusteringEngine {
                     activeTrackers.add(newTracker)
                     matchedTrackerIndices.add(activeTrackers.lastIndex)
                     Log.d(TAG, "  New tracker ${newTracker.id} started at ${ts}ms  (active trackers now: ${activeTrackers.size})")
+                }
+            }
+
+            // Only faces detected in this exact sampled frame are concurrent. A tracker
+            // awaiting the gap timeout is not visible and must not prevent the next
+            // appearance of the same person from joining its identity cluster.
+            val visibleTrackers = activeTrackers.filter { it.lastSeenTimeMs == ts }
+            for (i in 0 until visibleTrackers.size) {
+                for (j in i + 1 until visibleTrackers.size) {
+                    val a = visibleTrackers[i].id
+                    val b = visibleTrackers[j].id
+                    concurrentSegmentPairs.add(Pair(minOf(a, b), maxOf(a, b)))
                 }
             }
         }
@@ -288,5 +295,6 @@ class AppearanceClusteringEngine {
 
     companion object {
         private const val TAG = "AppearanceClustering"
+        private const val MAX_TRACK_GAP_MS = 700L
     }
 }
